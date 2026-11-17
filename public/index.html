@@ -1,1 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080817">
+<title>ZEUS AI - Olimpo</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080817;color:white;font-family:Arial,sans-serif}
+header{text-align:center;padding:25px 10px;background:linear-gradient(135deg,#17133c,#080817);border-bottom:1px solid #b58cff}
+.logo{font-size:35px;font-weight:bold;color:#e5c56b;text-shadow:0 0 18px #a77cff}
+.subtitle{color:#aaa;font-size:13px}
+nav{display:flex;justify-content:center;gap:10px;padding:18px}
+button{cursor:pointer;border:1px solid #9871e8;background:#21183c;color:white;padding:12px 20px;border-radius:10px}
+button.active,button:hover{background:#7950bd}
+main{max-width:750px;margin:auto;padding:15px}
+.panel{display:none}
+.panel.active{display:block}
+h2{color:#e5c56b}
+.box{background:#111126;border:1px solid #38305c;border-radius:14px;padding:15px;margin:12px 0}
+input,textarea{width:100%;padding:14px;border-radius:9px;border:1px solid #62518b;background:#080817;color:white;margin:8px 0;font-size:16px}
+textarea{resize:vertical;min-height:85px}
+.send{width:100%;background:#7950bd;font-weight:bold}
+#messages{height:320px;overflow-y:auto}
+.msg{padding:12px;margin:9px 0;border-radius:10px;background:#21183c;white-space:pre-wrap;overflow-wrap:anywhere}
+.user{background:#303050;text-align:right}
+#result img{width:100%;border-radius:12px;margin-top:15px}
+footer{text-align:center;color:#777;padding:25px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<div class="logo">⚡ ZEUS AI</div>
+<div class="subtitle">O poder da inteligência do Olimpo</div>
+</header>
 
+<nav>
+<button class="active" onclick="showTab('chat',this)">⚡ ZEUS CHAT</button>
+<button onclick="showTab('art',this)">🎨 ZEUS ART</button>
+</nav>
+
+<main>
+<section id="chat" class="panel active">
+<div class="box">
+<h2>🏛️ Converse com o Olimpo</h2>
+<p>Escolha uma divindade:</p>
+<select id="god" style="width:100%;padding:13px;background:#080817;color:white;border-radius:9px">
+<option>Zeus</option>
+<option>Poseidon</option>
+<option>Hades</option>
+<option>Atena</option>
+<option>Ares</option>
+<option>Apolo</option>
+<option>Afrodite</option>
+<option>Hermes</option>
+<option>Hefesto</option>
+<option>Deméter</option>
+</select>
+</div>
+<div class="box">
+<div id="messages">
+<div class="msg">⚡ Bem-vindo ao Olimpo! Sou Zeus. O que deseja saber, mortal?</div>
+</div>
+<textarea id="question" placeholder="Escreva sua mensagem..."></textarea>
+<button class="send" onclick="sendMessage()" id="sendBtn">ENVIAR MENSAGEM ⚡</button>
+</div>
+</section>
+
+<section id="art" class="panel">
+<div class="box">
+<h2>🎨 ZEUS ART</h2>
+<p>Transforme sua imaginação em imagens.</p>
+<textarea id="prompt" placeholder="Descreva a imagem que deseja criar..."></textarea>
+<button class="send" onclick="generateImage()" id="imageBtn">GERAR IMAGEM ✨</button>
+<div id="result"></div>
+</div>
+</section>
+</main>
+
+<footer>ZEUS AI © 2026 — Bem-vindo ao Olimpo.</footer>
+
+<script>
+function showTab(id,button){
+document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+document.getElementById(id).classList.add('active');
+button.classList.add('active');
+}
+
+async function sendMessage(){
+const input=document.getElementById('question');
+const messages=document.getElementById('messages');
+const btn=document.getElementById('sendBtn');
+const message=input.value.trim();
+if(!message)return;
+
+const god=document.getElementById('god').value;
+messages.innerHTML+=`<div class="msg user">${escapeHTML(message)}</div>`;
+input.value='';
+btn.disabled=true;
+btn.textContent='CONSULTANDO O OLIMPO...';
+
+const loading=document.createElement('div');
+loading.className='msg';
+loading.textContent=god+' está pensando...';
+messages.appendChild(loading);
+messages.scrollTop=messages.scrollHeight;
+
+try{
+const response=await fetch('/api/chat',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({message:`Responda como ${god}, uma divindade da mitologia grega. Mensagem: ${message}`})
+});
+const data=await response.json();
+if(!response.ok)throw new Error(data.error||'Falha na comunicação');
+loading.textContent=data.choices?.[0]?.message?.content||data.message||data.reply||'Não foi possível obter uma resposta.';
+}catch(error){
+loading.textContent='Erro: '+error.message;
+}
+btn.disabled=false;
+btn.textContent='ENVIAR MENSAGEM ⚡';
+messages.scrollTop=messages.scrollHeight;
+}
+
+async function generateImage(){
+const prompt=document.getElementById('prompt').value.trim();
+const result=document.getElementById('result');
+const btn=document.getElementById('imageBtn');
+if(!prompt){alert('Descreva a imagem primeiro.');return;}
+btn.disabled=true;
+btn.textContent='CRIANDO SUA IMAGEM...';
+result.textContent='Aguarde, invocando os poderes do Olimpo...';
+
+try{
+const response=await fetch('/api/image',{
+method:'POST',
+headers:{'Content-Type':'application/json'},
+body:JSON.stringify({prompt})
+});
+const type=response.headers.get('content-type')||'';
+if(!response.ok){
+const data=await response.json();
+throw new Error(data.error||'Erro ao gerar imagem');
+}
+if(type.includes('image/')){
+const blob=await response.blob();
+result.innerHTML='';
+const img=document.createElement('img');
+img.src=URL.createObjectURL(blob);
+result.appendChild(img);
+}else{
+const data=await response.json();
+const url=data.url||data.imageUrl||data.image;
+if(!url)throw new Error('A API não retornou uma imagem.');
+result.innerHTML='';
+const img=document.createElement('img');
+img.src=url;
+result.appendChild(img);
+}
+}catch(error){
+result.textContent='Erro: '+error.message;
+}
+btn.disabled=false;
+btn.textContent='GERAR IMAGEM ✨';
+}
+
+function escapeHTML(text){
+const el=document.createElement('div');
+el.textContent=text;
+return el.innerHTML;
+}
+</script>
+</body>
+</html>
